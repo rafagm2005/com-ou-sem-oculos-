@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Detector de Óculos</title>
+
+  <!-- TensorFlow.js (versão compatível) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+
+  <!-- Teachable Machine Image -->
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+      padding: 40px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #webcam-container {
+      margin-top: 20px;
+    }
+
+    #label-container {
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    #acesso {
+      margin-top: 30px;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Detector de Óculos 👓</h1>
+  <p>O acesso só é liberado se o modelo detectar óculos</p>
+
+  <button onclick="init()">Iniciar câmera</button>
+
+  <div id="webcam-container"></div>
+  <div id="label-container"></div>
+  <div id="acesso">⏳ Aguardando detecção...</div>
+
+  <script>
+    const URL = "my_model/";
+
+    let model, webcam;
+
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      model = await tmImage.load(modelURL, metadataURL);
+
+      webcam = new tmImage.Webcam(200, 200, true);
+      await webcam.setup();
+      await webcam.play();
+
+      document.getElementById("webcam-container").appendChild(webcam.canvas);
+      window.requestAnimationFrame(loop);
+    }
+
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+  const predictions = await model.predict(webcam.canvas);
+
+  let comOculos = 0;
+  let semOculos = 0;
+
+  predictions.forEach(p => {
+    const nome = p.className.toUpperCase();
+
+    if (nome.includes("COM")) {
+      comOculos = p.probability;
+    }
+
+    if (nome.includes("SEM")) {
+      semOculos = p.probability;
+    }
+  });
+
+  document.getElementById("label-container").innerHTML = `
+    COM ÓCULOS: ${comOculos.toFixed(2)}<br>
+    SEM ÓCULOS: ${semOculos.toFixed(2)}
+  `;
+
+  const acesso = document.getElementById("acesso");
+
+  if (comOculos > 0.8) {
+    acesso.innerHTML = "✅ Acesso liberado — COM ÓCULOS";
+    acesso.style.background = "#d4edda";
+    acesso.style.color = "#155724";
+  } else {
+    acesso.innerHTML = "❌ Acesso negado — SEM ÓCULOS";
+    acesso.style.background = "#f8d7da";
+    acesso.style.color = "#721c24";
+  }
+}
+  </script>
+
+</body>
+</html>
